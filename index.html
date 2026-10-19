@@ -1,0 +1,487 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#000000">
+<title>Clinical Skills Draw</title>
+<style>
+/* Layout: iOS-style grouped list in one narrow column; a pixel penguin hops along the bottom edge. Single dark theme by choice. */
+:root {
+  --bg: #000000;
+  --card: #1c1c1e;
+  --card-2: #2c2c2e;
+  --label: #ffffff;
+  --secondary: rgba(235, 235, 245, 0.6);
+  --tertiary: rgba(235, 235, 245, 0.3);
+  --sep: #38383a;
+  --blue: #0a84ff;
+  --green: #30d158;
+  --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  --display: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { margin: 0; }
+body {
+  background: var(--bg); color: var(--label); font-family: var(--font); font-size: 17px; line-height: 1.35;
+  -webkit-font-smoothing: antialiased; letter-spacing: -0.01em;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 40px 140px;
+}
+.wrap { max-width: 600px; margin: 0 auto; display: grid; gap: 32px; }
+header h1 { font-family: var(--display); font-weight: 700; font-size: 34px; line-height: 1.1; margin: 0 0 6px; letter-spacing: -0.02em; }
+header p { margin: 0; color: var(--secondary); font-size: 15px; }
+
+.group-label { font-size: 13px; color: var(--secondary); text-transform: uppercase; letter-spacing: 0.02em; margin: 0 0 8px 16px; font-weight: 400; }
+.group { background: var(--card); border-radius: 12px; overflow: hidden; }
+.group > * + * { border-top: 0.5px solid var(--sep); }
+
+.slip { padding: 14px 16px; display: grid; grid-template-columns: 1fr auto; gap: 2px 12px; align-items: center; }
+.slip .eyebrow { grid-column: 1 / -1; font-size: 13px; color: var(--secondary); }
+.slip .result { min-width: 0; display: flex; align-items: center; gap: 10px; font-family: var(--display); font-weight: 600; font-size: 20px; line-height: 1.25; transition: opacity 120ms; }
+.slip .letter { font-size: 13px; font-weight: 600; color: var(--blue); background: rgba(10, 132, 255, 0.16); width: 24px; height: 24px; border-radius: 6px; display: grid; place-items: center; flex: none; text-transform: uppercase; }
+.slip .detail { grid-column: 1 / -1; color: var(--tertiary); font-size: 13px; min-height: 1.2em; }
+.slip .placeholder { color: var(--tertiary); font-weight: 400; }
+.slip.spinning .result { opacity: 0.45; }
+
+button { font: inherit; cursor: pointer; letter-spacing: inherit; }
+.redraw { background: none; border: 0; color: var(--blue); padding: 4px 0; font-size: 15px; }
+.redraw:active { opacity: 0.5; }
+button:focus-visible, input:focus-visible + .switch, summary:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+
+.draw {
+  background: var(--blue); color: #fff; border: 0; border-radius: 14px;
+  padding: 15px 20px; font-weight: 600; font-size: 17px; width: 100%;
+  transition: transform 100ms, opacity 100ms;
+}
+.draw:active { transform: scale(0.98); opacity: 0.85; }
+.draw:disabled { opacity: 0.6; cursor: progress; }
+
+.row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 11px 16px; min-height: 44px; }
+.row .sub { color: var(--secondary); font-size: 15px; font-variant-numeric: tabular-nums; }
+.toggle { cursor: pointer; }
+.toggle input { position: absolute; opacity: 0; pointer-events: none; }
+.switch { width: 51px; height: 31px; border-radius: 16px; background: rgba(120, 120, 128, 0.32); position: relative; flex: none; transition: background 200ms; }
+.switch::after { content: ""; position: absolute; top: 2px; left: 2px; width: 27px; height: 27px; border-radius: 50%; background: #fff; box-shadow: 0 3px 8px rgba(0,0,0,.15); transition: transform 200ms; }
+.toggle input:checked + .switch { background: var(--green); }
+.toggle input:checked + .switch::after { transform: translateX(20px); }
+.bar { height: 4px; background: var(--card-2); border-radius: 2px; overflow: hidden; margin: 0 16px 14px; }
+.bar span { display: block; height: 100%; width: 0; background: var(--blue); transition: width 250ms; }
+.group > .bar { border-top: 0; }
+
+.log { list-style: none; margin: 0; padding: 0; }
+.log li { display: grid; grid-template-columns: 2.4rem 1fr; gap: 8px; padding: 11px 16px; font-size: 15px; }
+.log li + li { border-top: 0.5px solid var(--sep); }
+.log .n { color: var(--tertiary); font-variant-numeric: tabular-nums; }
+.log .empty { grid-column: 1 / -1; color: var(--tertiary); }
+.row-actions { display: flex; justify-content: center; margin-top: 10px; }
+.linkish { background: none; border: 0; color: var(--blue); padding: 6px 4px; font-size: 15px; }
+.linkish.danger { color: #ff453a; }
+.confirm { display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: center; justify-content: center; font-size: 15px; color: var(--secondary); }
+
+details { background: var(--card); border-radius: 12px; padding: 0 16px; }
+summary { cursor: pointer; padding: 13px 0; font-size: 17px; list-style: none; display: flex; justify-content: space-between; }
+summary::-webkit-details-marker { display: none; }
+summary::after { content: "›"; color: var(--tertiary); font-size: 22px; line-height: 1; transition: transform 200ms; }
+details[open] summary::after { transform: rotate(90deg); }
+.list { display: grid; gap: 16px; padding: 4px 0 16px; }
+.list h3 { font-size: 13px; color: var(--secondary); font-weight: 400; text-transform: uppercase; letter-spacing: 0.02em; margin: 0 0 6px; }
+.list ol { margin: 0; padding: 0; list-style: none; columns: 2 13rem; column-gap: 24px; font-size: 15px; }
+.list li { break-inside: avoid; padding: 2px 0; }
+.list li span { color: var(--blue); margin-right: 8px; font-weight: 600; }
+
+#pond { position: fixed; left: 0; right: 0; bottom: 0; height: 300px; width: 100%; pointer-events: none; z-index: 5; }
+
+@media (prefers-reduced-motion: reduce) {
+  .switch, .switch::after, .bar span, .slip .result, summary::after { transition: none; }
+}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header>
+    <h1>Clinical Skills Draw</h1>
+    <p>One item from each test. Each test covers both sides.</p>
+  </header>
+
+  <section>
+    <h2 class="group-label">Your draw</h2>
+    <div class="group" id="slips"></div>
+  </section>
+
+  <section style="display:grid;gap:16px">
+    <button class="draw" id="draw">Draw</button>
+    <div class="group">
+      <label class="row toggle" for="norepeat">
+        <span>No repeats</span>
+        <input type="checkbox" id="norepeat" checked>
+        <span class="switch" aria-hidden="true"></span>
+      </label>
+      <div class="row"><span>Progress</span><span class="sub" id="progress"></span></div>
+      <div class="bar" id="barwrap"><span id="bar"></span></div>
+    </div>
+  </section>
+
+  <section>
+    <h2 class="group-label">History</h2>
+    <div class="group"><ol class="log" id="log"></ol></div>
+    <div class="row-actions" id="resetrow"></div>
+  </section>
+
+  <details>
+    <summary>All items in the box</summary>
+    <div class="list" id="list"></div>
+  </details>
+</div>
+
+<canvas id="pond" aria-hidden="true"></canvas>
+
+<script>
+const TESTS = [
+  {
+    name: "Manual muscle test",
+    sides: "Left and right sides",
+    note: "One movement of the upper limb",
+    items: [
+      ["a", "Scapular elevation"], ["b", "Shoulder flexion"], ["c", "Shoulder extension"],
+      ["d", "Shoulder abduction"], ["e", "Shoulder internal rotation"], ["f", "Shoulder external rotation"],
+      ["g", "Elbow flexion"], ["h", "Elbow extension"], ["i", "Forearm supination"],
+      ["j", "Forearm pronation"], ["k", "Wrist flexion"], ["l", "Wrist extension"]
+    ]
+  },
+  {
+    name: "Vision screening test",
+    sides: "Left and right eyes",
+    items: [
+      ["a", "Visual acuity", "Left eye, right eye and binocular vision"],
+      ["b", "Oculomotor functions", "Saccadic eye movements, smooth pursuits and vergence"]
+    ]
+  },
+  {
+    name: "Sensory or motor control",
+    sides: "Left and right sides",
+    items: [["a", "Finger-to-nose test"], ["b", "Diadochokinesia"], ["c", "Stereognosis"]]
+  }
+];
+const TOTAL = TESTS.reduce((n, t) => n * t.items.length, 1);
+const KEY = "clinical-draw-v1";
+
+const store = {
+  load() { try { return JSON.parse(localStorage.getItem(KEY)) || null; } catch { return null; } },
+  save(s) { try { localStorage.setItem(KEY, JSON.stringify(s)); } catch {} }
+};
+
+function shuffle(a) {
+  for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; }
+  return a;
+}
+function allCombos() {
+  const out = [];
+  TESTS[0].items.forEach((_, a) => TESTS[1].items.forEach((_, b) => TESTS[2].items.forEach((_, c) => out.push([a, b, c]))));
+  return out;
+}
+const rand = n => Math.floor(Math.random() * n);
+
+let state = store.load();
+if (!state || !Array.isArray(state.deck) || state.deck.length !== TOTAL) {
+  state = { deck: shuffle(allCombos()), pos: 0, current: null, history: [], noRepeat: true };
+}
+
+const $ = id => document.getElementById(id);
+const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+function renderSlips(combo) {
+  $("slips").innerHTML = TESTS.map((t, i) => `
+    <div class="slip" id="slip${i}">
+      <div class="eyebrow">Test ${i + 1} · ${t.name} · ${t.sides}</div>
+      <div class="result" id="res${i}">${combo ? itemHtml(i, combo[i]) : '<span class="placeholder">Not drawn yet</span>'}</div>
+      <button class="redraw" data-i="${i}" ${combo ? "" : "hidden"} aria-label="Redraw test ${i + 1} only">Redraw</button>
+      <div class="detail" id="det${i}">${combo ? detailText(i, combo[i]) : (t.note || "")}</div>
+    </div>`).join("");
+}
+function itemHtml(t, k) { const it = TESTS[t].items[k]; return `<span class="letter">${it[0]}</span><span>${it[1]}</span>`; }
+function detailText(t, k) { const it = TESTS[t].items[k]; return it[2] || TESTS[t].note || ""; }
+function comboText(c) { return c.map((k, i) => TESTS[i].items[k][1]).join(" · "); }
+
+function renderProgress() {
+  const on = state.noRepeat;
+  $("norepeat").checked = on;
+  $("progress").textContent = on ? `${state.pos} of ${TOTAL}` : `Fully random`;
+  $("barwrap").hidden = !on;
+  $("bar").style.width = (state.pos / TOTAL * 100) + "%";
+}
+function renderLog() {
+  const h = state.history;
+  $("log").innerHTML = h.length
+    ? h.slice().reverse().slice(0, 30).map(e => `<li><span class="n">${e.n}</span><span>${comboText(e.c)}</span></li>`).join("")
+    : '<li><span class="empty">Your draws will appear here.</span></li>';
+  $("resetrow").innerHTML = h.length || state.pos ? '<button class="linkish danger" id="reset">Start over</button>' : "";
+}
+
+function spin(indices, done) {
+  if (reduced) { done(); return; }
+  indices.forEach(i => $("slip" + i).classList.add("spinning"));
+  let ticks = 0;
+  const timer = setInterval(() => {
+    indices.forEach(i => { $("res" + i).innerHTML = itemHtml(i, rand(TESTS[i].items.length)); });
+    if (++ticks >= 9) { clearInterval(timer); done(); }
+  }, 55);
+}
+function land(indices, combo) {
+  indices.forEach(i => {
+    $("slip" + i).classList.remove("spinning");
+    $("res" + i).innerHTML = itemHtml(i, combo[i]);
+    $("det" + i).textContent = detailText(i, combo[i]);
+  });
+}
+
+function draw() {
+  let combo;
+  if (state.noRepeat) {
+    if (state.pos >= TOTAL) { state.deck = shuffle(allCombos()); state.pos = 0; }
+    combo = state.deck[state.pos++].slice();
+  } else {
+    combo = TESTS.map(t => rand(t.items.length));
+  }
+  if (!state.current) renderSlips([0, 0, 0]);
+  state.current = combo;
+  state.history.push({ n: state.history.length + 1, c: combo.slice() });
+  store.save(state);
+  $("draw").disabled = true;
+  penguin.bigJump();
+  spin([0, 1, 2], () => {
+    land([0, 1, 2], combo);
+    document.querySelectorAll(".redraw").forEach(b => b.hidden = false);
+    $("draw").disabled = false;
+    $("draw").textContent = state.noRepeat && state.pos >= TOTAL ? "Draw (new round)" : "Draw again";
+    renderProgress(); renderLog();
+  });
+}
+
+function redrawOne(i) {
+  const n = TESTS[i].items.length;
+  let k = rand(n - 1); if (k >= state.current[i]) k++;
+  state.current[i] = k;
+  const last = state.history[state.history.length - 1];
+  if (last) last.c[i] = k;
+  store.save(state);
+  penguin.bigJump();
+  spin([i], () => { land([i], state.current); renderLog(); });
+}
+
+$("draw").addEventListener("click", draw);
+$("slips").addEventListener("click", e => {
+  const b = e.target.closest(".redraw"); if (b && state.current) redrawOne(+b.dataset.i);
+});
+$("norepeat").addEventListener("change", e => { state.noRepeat = e.target.checked; store.save(state); renderProgress(); });
+$("resetrow").addEventListener("click", e => {
+  if (e.target.id === "reset") {
+    $("resetrow").innerHTML = '<span class="confirm">Clear history and reshuffle? <button class="linkish danger" id="yes">Start over</button><button class="linkish" id="no">Cancel</button></span>';
+  } else if (e.target.id === "yes") {
+    state = { deck: shuffle(allCombos()), pos: 0, current: null, history: [], noRepeat: state.noRepeat };
+    store.save(state);
+    renderSlips(null); $("draw").textContent = "Draw"; renderProgress(); renderLog();
+  } else if (e.target.id === "no") {
+    renderLog();
+  }
+});
+
+$("list").innerHTML = TESTS.map((t, i) => `
+  <div><h3>Test ${i + 1} · ${t.name}</h3>
+  <ol>${t.items.map(it => `<li><span>${it[0]}</span>${it[1]}</li>`).join("")}</ol></div>`).join("");
+
+/* ---------- Pixel penguins ---------- */
+// Sprite regions: D outline/wings, K head and back, W belly, E eye, B brow, F face,
+// N ear patch, X chin, C crest, O beak, T feet. Each species colours them differently.
+const STAND = [
+  "..C......C..",
+  "...CDDDDC...",
+  "..DKKKKKKD..",
+  "..DKBKKBKD..",
+  "..DFEKKEFD..",
+  "..DNFOOFND..",
+  ".DKNXWWXNKD.",
+  "DKKWWWWWWKKD",
+  "DKDWWWWWWDKD",
+  ".D.WWWWWW.D.",
+  "...WWWWWW...",
+  "...DWWWWD...",
+  "..TTT..TTT.."
+];
+const JUMP = [
+  "..C......C..",
+  "...CDDDDC...",
+  "..DKKKKKKD..",
+  "..DKBKKBKD..",
+  "..DFEKKEFD..",
+  "DD.NFOOFN.DD",
+  "DKDNXWWXNDKD",
+  ".DKWWWWWWKD.",
+  "..DWWWWWWD..",
+  "...WWWWWW...",
+  "...WWWWWW...",
+  "...DWWWWD...",
+  "...TT..TT..."
+];
+const BLINK = STAND.map((r, i) => i === 4 ? r.replace(/E/g, "D") : r);
+
+const BASE = { D: "#262f42", K: "#3d4a66", W: "#f2f2f7", E: "#000000", O: "#ff9f0a", T: "#ff9f0a", P: "#ff8fa3" };
+const SPECIES = {
+  emperor:      { N: "#ffcc4d", O: "#ff8a5c", T: "#262f42" },
+  king:         { N: "#ff9500", O: "#ff7a45", T: "#262f42" },
+  gentoo:       { B: "W", O: "#ff6a00", T: "#ff7a2f" },
+  adelie:       { B: "W", O: "#262f42", T: "#ffb3c1" },
+  chinstrap:    { F: "W", X: "D", O: "#262f42", T: "#ffb3c1" },
+  rockhopper:   { C: "#ffd60a", E: "#ff3b30", O: "#d9480f", T: "#ffb3c1" },
+  macaroni:     { C: "#ff9f0a", O: "#d9480f", T: "#ffb3c1" },
+  littleblue:   { K: "#5b8fd9", D: "#355c99", O: "#355c99", T: "#ffb3c1" },
+  emperorChick: { K: "#48484a", D: "#8e8e93", W: "#d1d1d6", B: "#ffffff", F: "#ffffff", O: "#48484a", T: "#8e8e93" }
+};
+function makePal(spec) {
+  const pal = { ...BASE, ...spec };
+  [["B", "K"], ["F", "K"], ["N", "K"], ["X", "W"]].forEach(([k, def]) => {
+    const v = pal[k] ?? def;
+    pal[k] = pal[v] ?? v;
+  });
+  return pal;
+}
+
+// Families walk together: `follow` points at the leader, `off` is how far behind it they keep.
+// `wide` penguins only join on screens with room for them.
+const FLOCK = [
+  { sp: "emperor", S: 5, at: 0.1 },
+  { sp: "emperor", S: 5, follow: 0, off: 46 },
+  { sp: "emperorChick", S: 3, follow: 0, off: -40, blush: true },
+  { sp: "gentoo", S: 3, at: 0.55 },
+  { sp: "gentoo", S: 2, follow: 3, off: 30, blush: true },
+  { sp: "gentoo", S: 2, follow: 3, off: 56, blush: true },
+  { sp: "adelie", S: 3, at: 0.8, wide: true },
+  { sp: "adelie", S: 3, follow: 6, off: 40, wide: true },
+  { sp: "adelie", S: 2, follow: 6, off: -32, blush: true, wide: true },
+  { sp: "rockhopper", S: 3, at: 0.35 },
+  { sp: "king", S: 4, at: 0.68, wide: true },
+  { sp: "chinstrap", S: 3, at: 0.92, wide: true },
+  { sp: "macaroni", S: 3, at: 0.25, wide: true },
+  { sp: "littleblue", S: 2, at: 0.97 }
+];
+
+const penguin = (() => {
+  const cv = $("pond"), ctx = cv.getContext("2d");
+  const G = 0.0016;
+  let w = 0, h = 0, dpr = 1, active = [];
+  const flock = FLOCK.map((f, i) => ({
+    ...f, pal: makePal(SPECIES[f.sp]), PW: 12 * f.S, PH: 13 * f.S, x: 0, y: 0, vy: 0,
+    dir: i % 2 ? -1 : 1, onGround: true, nextHop: 300 + Math.random() * 1500,
+    flip: 0, blinkOffset: Math.random() * 6000, placed: false
+  }));
+  flock.forEach(p => { if (p.follow != null) { p.lead = flock[p.follow]; p.dir = p.lead.dir; } });
+  const clampX = (p, x) => Math.min(Math.max(0, x), Math.max(0, w - p.PW));
+  const targetOf = p => clampX(p, p.lead.x + (p.lead.PW - p.PW) / 2 - p.lead.dir * p.off);
+
+  function resize() {
+    dpr = Math.min(window.devicePixelRatio || 1, 2);
+    w = cv.clientWidth; h = cv.clientHeight;
+    cv.width = w * dpr; cv.height = h * dpr;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.imageSmoothingEnabled = false;
+    active = flock.filter(p => !p.wide || w >= 560);
+    flock.forEach(p => {
+      if (!p.placed) { p.x = p.lead ? targetOf(p) : clampX(p, p.at * w); p.placed = true; }
+      p.x = clampX(p, p.x);
+    });
+  }
+  function sprite(p, rows, x, y, flipX) {
+    rows.forEach((row, r) => {
+      for (let c = 0; c < row.length; c++) {
+        let ch = flipX ? row[row.length - 1 - c] : row[c];
+        if (ch === ".") continue;
+        if (p.blush && ch === "F" && r === 5) ch = "P";
+        const col = p.pal[ch];
+        if (!col) continue;
+        ctx.fillStyle = col;
+        ctx.fillRect(Math.round(x + c * p.S), Math.round(y + r * p.S), p.S, p.S);
+      }
+    });
+  }
+  function frame(now) {
+    ctx.clearRect(0, 0, w, h);
+    const ground = h - 12;
+    // smaller penguins draw first so the bigger ones sit in front
+    active.slice().sort((a, b) => a.S - b.S).forEach(p => {
+      const lift = Math.min(1, -p.y / 90);
+      ctx.fillStyle = "rgba(255,255,255,0.08)";
+      ctx.beginPath();
+      ctx.ellipse(p.x + p.PW / 2, ground + 2, (p.PW / 2.4) * (1 - lift * 0.6), 3, 0, 0, Math.PI * 2);
+      ctx.fill();
+      const rows = p.onGround ? ((now + p.blinkOffset) % 6000 > 5850 ? BLINK : STAND) : JUMP;
+      const squash = p.onGround && p.flip > 0 ? p.S : 0;
+      sprite(p, rows, p.x, ground - p.PH + p.y + squash, p.dir < 0);
+    });
+  }
+  function hop(p, v) { p.vy = v; p.onGround = false; }
+  let last = performance.now();
+  function tick(now) {
+    const dt = Math.min(40, now - last); last = now;
+    active.forEach(p => {
+      const speed = 0.05 + p.S * 0.012;
+      if (p.onGround) {
+        p.nextHop -= dt;
+        if (p.flip > 0) p.flip -= dt;
+        if (p.nextHop <= 0) {
+          if (p.lead && Math.abs(targetOf(p) - p.x) < 6 && Math.random() < 0.6) {
+            // already beside the family, so wait a moment
+            p.nextHop = 300; p.dir = p.lead.dir;
+          } else {
+            hop(p, p.lead ? -0.4 : (Math.random() < 0.2 ? -0.75 : -0.45) * (0.75 + p.S * 0.07));
+          }
+        }
+      } else {
+        p.vy += G * dt;
+        p.y += p.vy * dt;
+        if (p.lead) {
+          const gap = targetOf(p) - p.x;
+          p.x += Math.sign(gap) * Math.min(Math.abs(gap), speed * 1.5 * dt);
+          p.dir = Math.abs(gap) > 4 ? Math.sign(gap) : p.lead.dir;
+        } else {
+          p.x += p.dir * speed * dt;
+          if (p.x < 0) { p.x = 0; p.dir = 1; }
+          if (p.x > w - p.PW) { p.x = w - p.PW; p.dir = -1; }
+        }
+        if (p.y >= 0) {
+          p.y = 0; p.vy = 0; p.onGround = true; p.flip = 120;
+          if (p.lead) {
+            p.nextHop = 120 + Math.random() * 500;
+          } else {
+            p.nextHop = 250 + Math.random() * 1200;
+            if (Math.random() < 0.15) p.dir *= -1;
+          }
+        }
+      }
+    });
+    frame(now);
+    requestAnimationFrame(tick);
+  }
+  resize();
+  addEventListener("resize", resize);
+  if (reduced) { frame(0); addEventListener("resize", () => frame(0)); }
+  else requestAnimationFrame(tick);
+  return {
+    bigJump() {
+      if (reduced) return;
+      // a ripple of jumps across the colony
+      active.forEach((p, i) => setTimeout(() => { if (p.onGround) hop(p, p.lead ? -0.65 : -0.85); }, i * 50));
+    }
+  };
+})();
+
+renderSlips(state.current);
+if (state.current) $("draw").textContent = "Draw again";
+renderProgress(); renderLog();
+</script>
+</body>
+</html>
